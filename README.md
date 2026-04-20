@@ -140,3 +140,33 @@ Key daily variables: `temperature_2m_max`, `temperature_2m_min`, `temperature_2m
 - [scipy.stats documentation](https://docs.scipy.org/doc/scipy/reference/stats.html)
 - [statsmodels documentation](https://www.statsmodels.org/stable/index.html)
 - [Seaborn gallery](https://seaborn.pydata.org/examples/index.html)
+
+-----------------------------------------------------------------------------DAY1-------------------------------------------------------------------------------
+
+# Soil Moisture Prediction Project (10-Year Study)
+
+## 1. Problem Statement
+Can we predict soil moisture levels for the next 7 days across diverse climatic zones in Azerbaijan? By analyzing a decade of weather patterns, this project aims to provide high-precision irrigation guidance for **Saatli (Cotton)** and **Lankaran (Tea)** and possible additional cities.
+
+## 2. Data Sources & Stack
+* **API:** Open-Meteo (Archive & Forecast endpoints).
+* **Database:** **DuckDB** (optimized for analytical queries on large datasets).
+* **Time Range:** **10+ years** of historical data (2015–2026) + 7-day or 30 days real-time forecast.
+
+## 3. Target Cities & Variables
+| City | Focus Crop | Climate Type | Key Sensors/Variables |
+| :--- | :--- | :--- | :--- |
+| **Baku** | Urban/Control | Semi-arid | Heat Index, Wind Speed |
+| **Saatli** | **Cotton** | Arid | Evapotranspiration, Soil Moisture |
+| **Lankaran** | **Tea** | Humid | Precipitation, Humidity |
++ possible other cities 
+## 4. Methodology Outline
+* **Week 1 (Engineering):** Ingest 10 years of daily data for Baku, Saatli, and Lankaran. Implement automated data quality gates in DuckDB to handle sensor gaps and ensure a clean ETL pipeline.
+* **Week 2 (Analysis & ML):** Analyze long-term seasonal trends and correlations. **Train a Random Forest Regressor to forecast soil moisture by capturing complex non-linear patterns within the 10-year historical dataset.**
+
+## 5. Success Criteria
+* **Model Accuracy:** Mean Absolute Error ($MAE$) < **0.05** $m^3/m^3$.
+* **Data Rigor:** Successful handling of over 3,650 days of data per city without processing errors.
+* **Insights:** Identifying specific "dry-spell" patterns over the last decade.
+
+> **Note:** This project is designed to be scalable. More cities and specialized agricultural variables will be integrated as the pipeline matures.
