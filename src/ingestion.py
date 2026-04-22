@@ -4,7 +4,7 @@ import requests_cache
 from retry_requests import retry
 from datetime import datetime, date, timedelta
 import time
-from src.config import HISTORICAL_API_URL, FORECAST_API_URL, CITIES, MY_VARIABLES, START_DATE, END_DATE
+from config import HISTORICAL_API_URL, FORECAST_API_URL, CITIES, MY_VARIABLES, START_DATE, END_DATE
 # 1. API Client Setup
 cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
 retry_session = retry(cache_session, retries=3, backoff_factor=1.5)
