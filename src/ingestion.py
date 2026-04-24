@@ -1,3 +1,4 @@
+import os # Make sure os is imported at the top of your file!
 import pandas as pd
 import openmeteo_requests
 import requests_cache
@@ -108,15 +109,22 @@ def fetch_all_cities(cities_config, start_date, end_date, variables):
 
 if __name__ == "__main__":
     try:
-        # Artıq burada heç bir siyahı yoxdur! 
-        # CITIES, START_DATE, END_DATE və MY_VARIABLES birbaşa config.py-dən gəlir.
-        
         results = fetch_all_cities(CITIES, START_DATE, END_DATE, MY_VARIABLES)
         
-        print("\n✅ Data successfully collected using config settings.")
+        # --- NEW CODE: Save the data directly from the python script ---
+        output_path = "../data/raw/"
+        os.makedirs(output_path, exist_ok=True)
+        
+        for city_name, df in results.items():
+            file_name = f"{city_name.lower()}_inference.parquet"
+            full_path = os.path.join(output_path, file_name)
+            df.to_parquet(full_path, index=False)
+            print(f"✅ {city_name}: {len(df)} rows saved to {file_name}")
+        # ---------------------------------------------------------------
+            
+        print("\n✅ Data successfully collected and saved to Parquet using config settings.")
         print(f"Start Date: {START_DATE}")
         print(f"End Date: {END_DATE}")
-        print(f"Cities processed: {list(results.keys())}")
 
     except Exception as e:
         print(f"\n❌ Pipeline stopped: {e}")

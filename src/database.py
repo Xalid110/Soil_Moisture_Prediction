@@ -47,6 +47,25 @@ def load_raw_data(conn, data_dir="../data/raw/"):
     """
     conn.execute(query)
 
+
+def get_max_dates(conn):
+    """Fetches the latest date available in the raw table for each city."""
+    try:
+        df = conn.execute("SELECT city, MAX(date) as max_date FROM raw.weather_daily GROUP BY city").df()
+        # Convert to dictionary: {'Baki': Timestamp, 'Zerdab': Timestamp}
+        return dict(zip(df['city'], df['max_date']))
+    except duckdb.CatalogException:
+        return {} # Table doesn't exist yet
+
+def append_raw_data(conn, data_dir="../data/raw/"):
+    """Appends data from parquet files into the raw table without truncating."""
+    query = f"""
+    INSERT INTO raw.weather_daily BY NAME
+    SELECT * FROM read_parquet('{data_dir}*.parquet');
+    """
+    conn.execute(query)
+
+    
 #if __name__ == "__main__":
     #conn = get_connection()
     #create_schemas(conn)

@@ -12,7 +12,7 @@ def handle_missing_values(df, strategy="ffill"):
     target_cols = [c for c in df.columns if c not in soil_cols]
 
     if strategy == "ffill":
-        df[target_cols] = df[target_cols].fillna(method="ffill")
+        df[target_cols] = df[target_cols].ffill()
     elif strategy == "zero":
         df[target_cols] = df[target_cols].fillna(0)
     elif strategy == "drop":
@@ -48,6 +48,7 @@ def clean_raw_to_staging(conn):
 
     # 1. Read raw data
     df = conn.execute("SELECT * FROM raw.weather_daily").df()
+    df = df.drop_duplicates(subset=['city', 'date'], keep='last')
     print(f"📥 Raw data loaded: {len(df)} rows, {len(df.columns)} columns")
 
     # 2. Handle missing values
