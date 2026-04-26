@@ -28,14 +28,14 @@ In `notebooks/day_06_eda.ipynb`, compute and display:
 
 Create visualisations showing:
 
-1. **Histograms** of daily max temperature for each city (overlaid or faceted). Are they normally distributed?
+1. **Histograms** of daily mean temperature for each city (overlaid or faceted). Are they normally distributed?
 2. **Box plots** of temperature by season for each city. How do seasons compare?
 3. **Violin plots** of precipitation (log-scaled if needed) by city. How does rainfall pattern differ?
 4. **QQ-plots** for at least one variable per city to check normality — this will be important for hypothesis testing tomorrow.
 
 ### Task 3 — Time Series Exploration
 
-1. **Full time series plot**: Plot daily max temperature over the entire 5+ years for each city. Add a 30-day rolling average overlay.
+1. **Full time series plot**: Plot daily mean temperature over the entire 5+ years for each city. Add a 30-day rolling average overlay.
 2. **Seasonal decomposition**: Decompose at least one variable (e.g., temperature) into trend, seasonal, and residual components. Use `statsmodels.tsa.seasonal.seasonal_decompose`.
 3. **Year-over-year comparison**: Overlay the same city's temperature curves for different years. Are some years clearly warmer or cooler?
 4. **Heatmap**: Create a calendar heatmap (day-of-year x year) for temperature in one city.
