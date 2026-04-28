@@ -65,11 +65,4 @@ def append_raw_data(conn, data_dir="../data/raw/"):
     """
     conn.execute(query)
 
-    
-#if __name__ == "__main__":
-    #conn = get_connection()
-    #create_schemas(conn)
-    #create_raw_tables(conn)
-    #conn.close()
-#conn = get_connection()
-#conn.close()    
+   

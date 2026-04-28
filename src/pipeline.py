@@ -1,5 +1,6 @@
 import argparse
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import time
 import pandas as pd
@@ -15,14 +16,21 @@ from config import CITIES, MY_VARIABLES, START_DATE, END_DATE
 
 # Setup Logging
 os.makedirs("../logs", exist_ok=True)
-logging.basicConfig(
-    filename='../logs/pipeline.log', 
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# File handler with rotation: max 1MB per file, keep 3 backups
+file_handler = RotatingFileHandler(
+    '../logs/pipeline.log', maxBytes=1_000_000, backupCount=3
 )
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
+
+# Console handler
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
-logging.getLogger('').addHandler(console)
+console.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(console)
 
 def run_pipeline(mode="full"):
     start_time = time.time()
@@ -38,43 +46,66 @@ def run_pipeline(mode="full"):
     try:
         # --- STAGE 1: INGESTION ---
         logging.info("STAGE 1: Data Ingestion")
-        max_dates = database.get_max_dates(conn) if mode == "incremental" else {}
+        
+        # In incremental mode, get the max HISTORICAL date per city (ignore old forecast rows)
+        if mode == "incremental":
+            try:
+                hist_max_df = conn.execute(
+                    "SELECT city, MAX(date) as max_date FROM raw.weather_daily WHERE data_type = 'historical' GROUP BY city"
+                ).df()
+                max_hist_dates = dict(zip(hist_max_df['city'], hist_max_df['max_date']))
+            except Exception:
+                max_hist_dates = {}
+        else:
+            max_hist_dates = {}
+        
         new_data_fetched = False
         
         for city in CITIES:
             city_name = city['name']
             
-            # Determine date range for this city
+            # --- Historical data: skip only if we already have up to END_DATE ---
             city_start = START_DATE
-            if mode == "incremental" and city_name in max_dates and pd.notna(max_dates[city_name]):
-                # Fetch data starting the day after the last recorded date
-                last_date = pd.to_datetime(max_dates[city_name]).tz_localize(None)
-                city_start = (last_date + timedelta(days=1)).strftime('%Y-%m-%d')
-                
-            if pd.to_datetime(city_start) > pd.to_datetime(END_DATE):
-                logging.info(f"⏩ {city_name}: Data is already up to date (Latest: {last_date.date()}). Skipping fetch.")
-                continue
-                
-            logging.info(f"📥 Fetching {city_name} from {city_start} to {END_DATE}...")
-            df_hist = ingestion.fetch_historical(city_name, city['lat'], city['lon'], city_start, END_DATE, MY_VARIABLES)
+            hist_skip = False
+            if mode == "incremental" and city_name in max_hist_dates and pd.notna(max_hist_dates[city_name]):
+                last_hist = pd.to_datetime(max_hist_dates[city_name]).tz_localize(None)
+                city_start = (last_hist + timedelta(days=1)).strftime('%Y-%m-%d')
+                if pd.to_datetime(city_start) > pd.to_datetime(END_DATE):
+                    logging.info(f"⏩ {city_name}: Historical data up to date (Latest: {last_hist.date()}).")
+                    hist_skip = True
+            
+            frames = []
+            if not hist_skip:
+                logging.info(f"📥 Fetching {city_name} historical from {city_start} to {END_DATE}...")
+                df_hist = ingestion.fetch_historical(city_name, city['lat'], city['lon'], city_start, END_DATE, MY_VARIABLES)
+                frames.append(df_hist)
+            
+            # --- Forecast data: ALWAYS re-fetch (forecasts update daily) ---
+            logging.info(f"🔮 Fetching {city_name} forecast (14 days)...")
             df_fore = ingestion.fetch_forecast(city_name, city['lat'], city['lon'], MY_VARIABLES)
+            frames.append(df_fore)
             
-            combined = pd.concat([df_hist, df_fore], ignore_index=True)
+            combined = pd.concat(frames, ignore_index=True)
             
-            # Save strictly as an incremental parquet to avoid overwriting base data 
-            file_suffix = "_full" if mode == "full" else f"_inc_{city_start}"
+            # Save to parquet
+            file_suffix = "_full" if mode == "full" else f"_inc_{pd.Timestamp.now().strftime('%Y%m%d')}"
             file_name = f"{city_name.lower()}{file_suffix}.parquet"
             combined.to_parquet(os.path.join(output_path, file_name), index=False)
             new_data_fetched = True
             
         # --- STAGE 2: DATABASE LOAD ---
         logging.info("STAGE 2: Loading to DuckDB Raw Layer")
+        
+        if mode == "incremental" and new_data_fetched:
+            # Drop old forecast rows — they will be replaced with fresh ones
+            conn.execute("DELETE FROM raw.weather_daily WHERE data_type = 'forecast'")
+            logging.info("🗑️ Removed stale forecast rows from raw table.")
+        
         if mode == "full":
             database.load_raw_data(conn, output_path)
         elif new_data_fetched:
-            # We only append files that have the incremental suffix we just created
             database.append_raw_data(conn, output_path)
-            # Cleanup incremental parquets after loading so they don't load twice next time
+            # Cleanup incremental parquets after loading
             for f in os.listdir(output_path):
                 if "_inc_" in f:
                     os.remove(os.path.join(output_path, f))

@@ -30,7 +30,10 @@ def create_features(conn):
           .shift(1)
     )
 
-    print("✅ Features computed: day_of_year, precip_sum_7d, prev_soil_moisture")
+    # --- 2.4 Squared precipitation (captures non-linear heavy-rain effects)
+    df["precip_squared"] = df["precipitation_sum"] ** 2
+
+    print("✅ Features computed: day_of_year, precip_sum_7d, prev_soil_moisture, precip_squared")
 
     # 3. Inspect basic info
     print(f"\nData now has {len(df)} rows and {df.shape[1]} columns.")
