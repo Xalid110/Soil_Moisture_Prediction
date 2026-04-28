@@ -14,7 +14,10 @@ def run_all_checks(df_raw, df_staging, df_features):
     })
     
     # 2. Null ratio (After staging)
-    null_ratios = df_staging.isnull().mean()
+    # Exclude soil moisture columns — their NaNs are intentionally preserved
+    # (forecast rows have no ground-truth soil moisture)
+    non_soil_cols = [c for c in df_staging.columns if "soil_moisture" not in c]
+    null_ratios = df_staging[non_soil_cols].isnull().mean()
     high_null_cols = null_ratios[null_ratios >= 0.05].index.tolist()
     results.append({
         "stage": "Staging", "check_name": "Null ratio < 5%",
