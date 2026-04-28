@@ -130,6 +130,6 @@ Below is the execution timeline of our two-week sprint, detailing completed and 
 | ✅ **Done** | **Apr 24** | Data Cleaning | Implemented automated cleaning rules, handled missing values, engineered features (e.g., rolling averages). |
 | ✅ **Done** | **Apr 24** | Pipeline Automation | Orchestrated end-to-end Python pipeline with logging and automated quality gates. |
 | ✅ **Done** | **Apr 26** | Exploratory Data Analysis | Conducted statistical descriptions, temporal visualizations, and cross-city comparisons. |
-| 🔄 **Plan** | **Apr 28** | Statistical Analysis | Execute formal hypothesis testing, feature correlation analysis, and finalize modeling features. |
-| 🔄 **Plan** | **Apr 29** | Predictive Modeling | Train Random Forest & baseline regression models, evaluate MAE, compute confidence intervals. |
+| ✅ **Done** | **Apr 28** | Statistical Analysis | Execute formal hypothesis testing, feature correlation analysis, and finalize modeling features. |
+| ✅ **Done** | **Apr 29** | Predictive Modeling | Train Random Forest & baseline regression models, evaluate MAE, compute confidence intervals. |
 | 🔄 **Plan** | **Apr 30** | Final Presentation | Prepare live pipeline demo, project submission, and presentation deck. |
