@@ -10,3 +10,6 @@ scikit-learn
 pyarrow
 missingno
 notebook
+openmeteo-requests
+requests-cache
+retry-requests

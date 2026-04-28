@@ -2,6 +2,8 @@
 data/raw/
 data/*.duckdb
 data/*.duckdb.wal
+*.sqlite
+*.db
 
 # Logs
 logs/

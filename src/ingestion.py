@@ -59,11 +59,11 @@ def fetch_historical(city_name, latitude, longitude, start_date, end_date, varia
                 raise RuntimeError(f"Critical Error ({city_name}): {e}")
 
 def fetch_forecast(city_name, latitude, longitude, variables):
-    """Fetches the 7-day weather forecast"""
+    """Fetches the 14-day weather forecast"""
     url = FORECAST_API_URL
     params = {
         "latitude": latitude, "longitude": longitude,
-        "daily": variables, "timezone": "auto", "forecast_days": 7
+        "daily": variables, "timezone": "auto", "forecast_days": 14
     }
     for attempt in range(3):
         try:
@@ -87,6 +87,11 @@ def fetch_forecast(city_name, latitude, longitude, variables):
             df = pd.DataFrame(data=daily_data)
             df.insert(0, 'city', city_name)
             df['data_type'] = 'forecast'
+
+            for col in df.columns:
+                if "soil_moisture" in col:
+                    df[col] = float("nan")
+
             return df
         except Exception as e:
             if attempt < 2:

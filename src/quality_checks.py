@@ -47,7 +47,7 @@ def run_all_checks(df_raw, df_staging, df_features):
     })
     
     # 5. Feature completeness (After analytics)
-    expected_features = ["day_of_year", "precip_sum_7d", "prev_soil_moisture"]
+    expected_features = ["day_of_year", "precip_sum_7d", "prev_soil_moisture", "precip_squared"]
     missing_feats = [f for f in expected_features if f not in df_features.columns]
     results.append({
         "stage": "Analytics", "check_name": "Feature completeness",
