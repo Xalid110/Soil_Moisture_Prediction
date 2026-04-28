@@ -21,7 +21,7 @@ Reliable soil moisture forecasting is the backbone of efficient agricultural wat
 ## 🏗️ Pipeline Architecture
 
 <p align="center">
-  <img src="docs/pipeline_architecture.svg" alt="Data Pipeline Architecture" width="100%">
+  <img src="docs/Open-Meteo Data Pipeline-2026-04-28-153112.svg" alt="Data Pipeline Architecture" width="100%">
 </p>
 
 ---
