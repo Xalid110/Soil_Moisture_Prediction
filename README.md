@@ -18,6 +18,14 @@ Can we accurately predict soil moisture levels for the next 14 days across diver
 ## 💡 Why It Matters
 Reliable soil moisture forecasting is the backbone of efficient agricultural water management. This pipeline addresses genuine climate data challenges—such as seasonal non-stationarity and sensor gaps—to help farmers and agricultural planners optimize irrigation scheduling, conserve water resources, and maximize crop yields in varying climates. 
 
+## 🏗️ Pipeline Architecture
+
+<p align="center">
+  <img src="docs/pipeline_architecture.svg" alt="Data Pipeline Architecture" width="100%">
+</p>
+
+---
+
 ## 🎯 Target Definition
 * **Objective:** Predict future soil moisture levels based on historical weather patterns.
 * **Metric of Success:** Achieve a Mean Absolute Error (MAE) of **< 0.05 $m^3/m^3$** on the prediction set.
