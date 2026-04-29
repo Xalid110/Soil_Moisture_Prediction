@@ -11,7 +11,7 @@ import {
   CITY_PROFILES, CITY_KEYS, getSoilHealthStatus,
 } from './mockData';
 import { fetchCityForecast, parseApiResponse } from './api';
-import forecastData from './forecast_data.json';
+
 
 // ── Tooltip Formatter ─────────────────────────────────────────────
 function ChartTooltip({ active, payload, label }) {
@@ -201,11 +201,23 @@ export default function App() {
   const [liveData, setLiveData] = useState(null);   // Live API response
   const [isLive, setIsLive] = useState(false);       // Whether using live data
   const [loading, setLoading] = useState(true);
+  const [dynamicPredictions, setDynamicPredictions] = useState(null);
 
   // Live clock
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Fetch live API weather data
+  useEffect(() => {
+    fetch('/predictions.json')
+      .then((res) => {
+        if (!res.ok) throw new Error('No predictions.json found');
+        return res.json();
+      })
+      .then((data) => setDynamicPredictions(data))
+      .catch(() => console.log('Using hardcoded fallback predictions.'));
   }, []);
 
   // Fetch live data from Open-Meteo when city changes
@@ -228,43 +240,29 @@ export default function App() {
     return () => { cancelled = true; };
   }, [selectedCity]);
 
-  // Real XGBoost soil moisture from forecast_data.json + live weather from API
-  const profile = CITY_PROFILES[selectedCity];
-  const modelName = profile?.modelName || 'XGBoost';
+  // Simulated soil moisture (always from mock — XGBoost simulation)
+  const { forecast: mockForecast, current: mockCurrent, modelName, profile } = useMemo(
+    () => simulateModelPrediction(selectedCity, dynamicPredictions),
+    [selectedCity, dynamicPredictions],
+  );
 
+  // Merge: real temp/humidity/precip from API + simulated soil moisture from mock
   const forecast = useMemo(() => {
-    const cityResults = forecastData[selectedCity] || [];
+    if (!liveData) return mockForecast;
 
-    // Base forecast from real model predictions
-    const baseForecast = cityResults.map((item, index) => ({
-      day: index + 1,
-      date: item.date,
-      dateLabel: new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      soilMoisture: item.soil_moisture,
-      soilMoisturePercent: Math.round(item.soil_moisture * 100 * 10) / 10,
-      // Defaults — will be overwritten by live API data if available
-      temperature: 20,
-      humidity: 60,
-      precipitation: 0,
-    }));
-
-    // If we have live weather data from Open-Meteo, overlay it
-    if (liveData) {
-      return baseForecast.map((row, i) => {
-        if (i >= liveData.temperature.length) return row;
-        return {
-          ...row,
-          temperature: Math.round(liveData.temperature[i] * 10) / 10,
-          humidity: Math.round(liveData.humidity[i] * 10) / 10,
-          precipitation: Math.round((liveData.precipitation[i] || 0) * 10) / 10,
-          dateLabel: liveData.dateLabels[i] || row.dateLabel,
-          date: liveData.dates[i] || row.date,
-        };
-      });
-    }
-
-    return baseForecast;
-  }, [selectedCity, liveData]);
+    return mockForecast.map((row, i) => {
+      if (i >= liveData.temperature.length) return row;
+      return {
+        ...row,
+        temperature: Math.round(liveData.temperature[i] * 10) / 10,
+        humidity: Math.round(liveData.humidity[i] * 10) / 10,
+        precipitation: Math.round((liveData.precipitation[i] || 0) * 10) / 10,
+        dateLabel: liveData.dateLabels[i] || row.dateLabel,
+        date: liveData.dates[i] || row.date,
+        // soil moisture stays from XGBoost simulation
+      };
+    });
+  }, [mockForecast, liveData]);
 
   // Current values = day 0 (with safety for empty forecast)
   const current = useMemo(() => {

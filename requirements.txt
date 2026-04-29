@@ -13,3 +13,5 @@ notebook
 openmeteo-requests
 requests-cache
 retry-requests
+xgboost
+joblib

@@ -105,14 +105,23 @@ function getDayLabel(date) {
 
 // ── Forecast Generator ────────────────────────────────────────────
 
+const HARDCODED_PREDICTIONS = {
+  Baku: [0.123, 0.1121, 0.1044, 0.097, 0.0883, 0.0816, 0.0764, 0.0745, 0.0691, 0.0698, 0.0722, 0.0721, 0.0718, 0.0708],
+  Lenkeran: [0.322, 0.3143, 0.3072, 0.2996, 0.303, 0.2915, 0.2717, 0.2552, 0.2609, 0.2484, 0.2372, 0.219, 0.2066, 0.1962],
+  Quba: [0.308, 0.2958, 0.2852, 0.2933, 0.2958, 0.2739, 0.2884, 0.2858, 0.2848, 0.2931, 0.3078, 0.3129, 0.3016, 0.2888],
+  Saatli: [0.2163, 0.2106, 0.2044, 0.1994, 0.1951, 0.1922, 0.1872, 0.1888, 0.2219, 0.2131, 0.2072, 0.2026, 0.1991, 0.1939],
+  Zerdab: [0.192, 0.1851, 0.1805, 0.1771, 0.1715, 0.1698, 0.1728, 0.1678, 0.1923, 0.191, 0.1849, 0.183, 0.1829, 0.182],
+};
+
 /**
  * Simulates a call to the XGBoost model for a given city.
  * Returns a 14-day rolling forecast with realistic, profile-driven values.
  *
  * @param {string} cityKey — Key from CITY_PROFILES
+ * @param {object} dynamicPredictions — Optional map of dynamically loaded predictions
  * @returns {{ forecast: Array, current: Object, modelName: string }}
  */
-export function simulateModelPrediction(cityKey) {
+export function simulateModelPrediction(cityKey, dynamicPredictions = null) {
   const profile = CITY_PROFILES[cityKey];
   if (!profile) throw new Error(`Unknown city: ${cityKey}`);
 
@@ -136,13 +145,15 @@ export function simulateModelPrediction(cityKey) {
       -5, 50
     );
 
-    // Moisture is autoregressive — depends on previous day
-    const moistureDrift = (rng() - 0.48) * profile.moisture.noise;
-    const meanReversion = (profile.moisture.base - prevMoisture) * 0.15;
-    const moisture = clamp(
-      prevMoisture + moistureDrift + meanReversion + profile.moisture.amplitude * seasonalWave * 0.1,
-      0.02, 0.55
-    );
+    // Moisture is based on the predictions from XGBoost models
+    const predictionsMap = dynamicPredictions || HARDCODED_PREDICTIONS;
+    const hardcodedMoisture = predictionsMap[cityKey] ? predictionsMap[cityKey][day] : null;
+    const moisture = hardcodedMoisture !== null && hardcodedMoisture !== undefined
+      ? hardcodedMoisture
+      : clamp(
+        prevMoisture + (rng() - 0.48) * profile.moisture.noise + (profile.moisture.base - prevMoisture) * 0.15 + profile.moisture.amplitude * seasonalWave * 0.1,
+        0.02, 0.55
+      );
     prevMoisture = moisture;
 
     const humidity = clamp(
