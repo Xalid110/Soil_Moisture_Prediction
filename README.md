@@ -5,10 +5,9 @@
 ## 🚀 Developed by Team **QUADRA COSMOS**
 
 ### Team Members
-* **Orkhan Nuriyev** – Database Design & Pipeline
-* **Ibrahim Suleymanov** – Machine Learning Modeling, Statistical Analysis
-* **Khalid Ahmedov** – Data Cleaning & Web Application Development
-* **Revan Khanbabayev** – Exploratory Data Analysis (EDA)
+
+- **Ibrahim Suleymanov & Orkhan** → Modeling & Pipeline Development  
+- **Revan & Khalid** → Demo & Application Development – Exploratory Data Analysis (EDA)
 
 ---
 
