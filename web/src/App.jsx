@@ -8,7 +8,7 @@ import {
   ChevronDown, TrendingUp, Sprout, Sun, Wind, Wifi, WifiOff,
 } from 'lucide-react';
 import {
-  CITY_PROFILES, CITY_KEYS, getSoilHealthStatus,
+  CITY_PROFILES, CITY_KEYS, getSoilHealthStatus, simulateModelPrediction,
 } from './mockData';
 import { fetchCityForecast, parseApiResponse } from './api';
 
