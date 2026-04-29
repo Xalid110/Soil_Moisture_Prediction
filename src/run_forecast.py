@@ -4,7 +4,7 @@ import pandas as pd
 import joblib
 from datetime import timedelta
 
-# Layihənin kök (root) qovluğunu tapırıq
+# finding root folder
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(ROOT_DIR, 'src'))
 
@@ -13,16 +13,16 @@ import pipeline
 from config import CITIES
 
 def generate_city_forecasts():
-    # 1. Pipeline-ı işə salırıq
-    print("🚀 Pipeline işə düşür...")
+    # 1. Pipeline 
+    print(" Pipeline is working ...")
     pipeline.run_pipeline(mode="incremental")
     
     conn = database.get_connection()
     
-    # Modellərin yerləşdiyi qovluq (Tam yol ilə)
+    
     model_dir = os.path.join(ROOT_DIR, "ML")
     
-    # Şəhər adlarını datadakı adlarla (Baki) model faylları ilə eşləşdiririk
+    # Mapping city names to dataset labels (e.g., Baki) within the model files.
     city_models = {
         "Baki": "BAKU_0_7_xgb.pkl",
         "Lenkeran": "LENKERAN_0_7_xgb.pkl",
@@ -38,27 +38,27 @@ def generate_city_forecasts():
         model_filename = city_models.get(city_name)
         
         if not model_filename:
-            print(f"⚠️ {city_name} üçün model xəritədə tapılmadı.")
+            print(f" {city_name} couldn't find model for this city.")
             continue
             
         model_path = os.path.join(model_dir, model_filename)
         
         if not os.path.exists(model_path):
-            print(f"⚠️ Model faylı tapılmadı: {model_path}")
+            print(f" couldn't find model file: {model_path}")
             continue
 
-        print(f"🔮 {city_name} üçün proqnoz hazırlanır...")
+        print(f" {city_name} is predicting...")
         model = joblib.load(model_path)
         model_features = model.get_booster().feature_names
 
-        # Proqnoz datası
+        
         df_features = conn.execute(f"""
             SELECT * FROM analytics.weather_features 
             WHERE city = '{city_name}' AND data_type = 'forecast'
             ORDER BY date
         """).df()
 
-        # Son real rütubət (Tarixi datadan)
+        
         last_real_val = conn.execute(f"""
             SELECT soil_moisture_0_to_7cm_mean FROM analytics.weather_features 
             WHERE city = '{city_name}' AND data_type = 'historical'
@@ -66,7 +66,7 @@ def generate_city_forecasts():
         """).fetchone()
 
         if last_real_val is None:
-            print(f"⚠️ {city_name} üçün tarixi data tapılmadı, proqnoz mümkün deyil.")
+            print(f"⚠️ {city_name} Historical data missing; unable to generate forecast..")
             continue
 
         current_prev_moisture = last_real_val[0]
@@ -87,14 +87,14 @@ def generate_city_forecasts():
             })
 
     if not all_forecast_results:
-        print("❌ Heç bir proqnoz yaradıla bilmədi. Modelləri və datanı yoxlayın.")
+        print(" No forecasts could be generated. Please check the models and data.")
         return
 
     # 4. Cədvəl formatında çıxış
     final_df = pd.DataFrame(all_forecast_results)
     pivot_df = final_df.pivot(index='Date', columns='City', values='Soil_Moisture')
     
-    print("\n✅ 14 Günlük Torpaq Rütubəti Proqnozu (0-7cm):")
+    print("\n 14-Day Soil Moisture Forecast (0-7cm):")
     print("=" * 60)
     print(pivot_df)
     print("=" * 60)
