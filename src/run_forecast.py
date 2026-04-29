@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pandas as pd
 import joblib
 from datetime import timedelta
@@ -100,6 +101,32 @@ def generate_city_forecasts():
     print("=" * 60)
     
     conn.close()
+
+    # ── Nəticələri JSON faylına yaz (web demo üçün) ──
+    # Python-dakı şəhər adlarını web-dəki key-lərə çeviririk
+    city_name_to_web_key = {
+        "Baki": "Baku",
+        "Lenkeran": "Lenkeran",
+        "Quba": "Quba",
+        "Saatli": "Saatli",
+        "Zerdab": "Zerdab"
+    }
+
+    forecast_dict = {}
+    for result in all_forecast_results:
+        web_key = city_name_to_web_key.get(result["City"], result["City"])
+        if web_key not in forecast_dict:
+            forecast_dict[web_key] = []
+        forecast_dict[web_key].append({
+            "date": result["Date"],
+            "soil_moisture": result["Soil_Moisture"]
+        })
+
+    output_path = os.path.join(ROOT_DIR, "web", "src", "forecast_data.json")
+    with open(output_path, "w") as f:
+        json.dump(forecast_dict, f, indent=4)
+
+    print(f"\n✅ Proqnozlar 'web/src/forecast_data.json' faylına yazıldı.")
 
 if __name__ == "__main__":
     generate_city_forecasts()
