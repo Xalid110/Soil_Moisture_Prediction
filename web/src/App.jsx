@@ -8,9 +8,10 @@ import {
   ChevronDown, TrendingUp, Sprout, Sun, Wind, Wifi, WifiOff,
 } from 'lucide-react';
 import {
-  CITY_PROFILES, CITY_KEYS, simulateModelPrediction, getSoilHealthStatus,
+  CITY_PROFILES, CITY_KEYS, getSoilHealthStatus,
 } from './mockData';
 import { fetchCityForecast, parseApiResponse } from './api';
+import forecastData from './forecast_data.json';
 
 // ── Tooltip Formatter ─────────────────────────────────────────────
 function ChartTooltip({ active, payload, label }) {
@@ -227,38 +228,55 @@ export default function App() {
     return () => { cancelled = true; };
   }, [selectedCity]);
 
-  // Simulated soil moisture (always from mock — XGBoost simulation)
-  const { forecast: mockForecast, current: mockCurrent, modelName, profile } = useMemo(
-    () => simulateModelPrediction(selectedCity),
-    [selectedCity],
-  );
+  // Real XGBoost soil moisture from forecast_data.json + live weather from API
+  const profile = CITY_PROFILES[selectedCity];
+  const modelName = profile?.modelName || 'XGBoost';
 
-  // Merge: real temp/humidity/precip from API + simulated soil moisture from mock
   const forecast = useMemo(() => {
-    if (!liveData) return mockForecast;
+    const cityResults = forecastData[selectedCity] || [];
 
-    return mockForecast.map((row, i) => {
-      if (i >= liveData.temperature.length) return row;
-      return {
-        ...row,
-        temperature: Math.round(liveData.temperature[i] * 10) / 10,
-        humidity: Math.round(liveData.humidity[i] * 10) / 10,
-        precipitation: Math.round((liveData.precipitation[i] || 0) * 10) / 10,
-        dateLabel: liveData.dateLabels[i] || row.dateLabel,
-        date: liveData.dates[i] || row.date,
-        // soil moisture stays from XGBoost simulation
-      };
-    });
-  }, [mockForecast, liveData]);
+    // Base forecast from real model predictions
+    const baseForecast = cityResults.map((item, index) => ({
+      day: index + 1,
+      date: item.date,
+      dateLabel: new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      soilMoisture: item.soil_moisture,
+      soilMoisturePercent: Math.round(item.soil_moisture * 100 * 10) / 10,
+      // Defaults — will be overwritten by live API data if available
+      temperature: 20,
+      humidity: 60,
+      precipitation: 0,
+    }));
 
-  // Current values = day 0
-  const current = useMemo(() => ({
-    temperature: forecast[0].temperature,
-    humidity: forecast[0].humidity,
-    precipitation: forecast[0].precipitation,
-    soilMoisture: forecast[0].soilMoisture,
-    soilMoisturePercent: forecast[0].soilMoisturePercent,
-  }), [forecast]);
+    // If we have live weather data from Open-Meteo, overlay it
+    if (liveData) {
+      return baseForecast.map((row, i) => {
+        if (i >= liveData.temperature.length) return row;
+        return {
+          ...row,
+          temperature: Math.round(liveData.temperature[i] * 10) / 10,
+          humidity: Math.round(liveData.humidity[i] * 10) / 10,
+          precipitation: Math.round((liveData.precipitation[i] || 0) * 10) / 10,
+          dateLabel: liveData.dateLabels[i] || row.dateLabel,
+          date: liveData.dates[i] || row.date,
+        };
+      });
+    }
+
+    return baseForecast;
+  }, [selectedCity, liveData]);
+
+  // Current values = day 0 (with safety for empty forecast)
+  const current = useMemo(() => {
+    const day0 = forecast[0] || {};
+    return {
+      temperature: day0.temperature ?? 0,
+      humidity: day0.humidity ?? 0,
+      precipitation: day0.precipitation ?? 0,
+      soilMoisture: day0.soilMoisture ?? 0,
+      soilMoisturePercent: day0.soilMoisturePercent ?? 0,
+    };
+  }, [forecast]);
 
   const healthStatus = useMemo(
     () => getSoilHealthStatus(current.soilMoisturePercent),
