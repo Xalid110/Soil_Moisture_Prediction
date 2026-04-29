@@ -1,0 +1,208 @@
+/**
+ * SoilSense — Mock Data Generator
+ *
+ * Each city has a realistic climatic profile based on Azerbaijan's geography:
+ *   • Baku       — Semi-arid, Caspian coast (dry, warm)
+ *   • Saatli     — Arid, Kur-Araz lowland (hot, very dry)
+ *   • Lenkeran   — Humid subtropical (wet, lush)
+ *   • Zerdab     — Semi-arid, Central Aran plain
+ *   • Quba       — Temperate mountainous (cool, moderate moisture)
+ *
+ * Model naming convention follows the existing ML directory:
+ *   CITY_0_7_xgb  (soil moisture 0-7 cm depth, XGBoost)
+ */
+
+// ── City Profiles ──────────────────────────────────────────────────
+export const CITY_PROFILES = {
+  Baku: {
+    label: 'Baku',
+    modelName: 'BAKU_0_7_xgb',
+    lat: 40.3777,
+    lon: 49.892,
+    climate: 'Semi-arid',
+    cropFocus: 'Urban / Control',
+    // Real data (Apr 29–May 12): temps 11.6–20.3°C, humidity 55–81%
+    temp: { base: 16, amplitude: 4.3, noise: 1.5 },
+    moisture: { base: 0.15, amplitude: 0.04, noise: 0.02 },
+    humidity: { base: 71, amplitude: 13, noise: 4 },
+    description: 'Caspian coastline, semi-arid climate with moderate winds.',
+  },
+  Saatli: {
+    label: 'Saatli',
+    modelName: 'SAATLI_0_7_xgb',
+    lat: 39.9321,
+    lon: 48.3689,
+    climate: 'Arid',
+    cropFocus: 'Cotton',
+    // Real data (Apr 29–May 12): temps 13.1–21.5°C, humidity 48–76%
+    temp: { base: 18, amplitude: 4.2, noise: 1.5 },
+    moisture: { base: 0.11, amplitude: 0.03, noise: 0.015 },
+    humidity: { base: 66, amplitude: 14, noise: 4 },
+    description: 'Kur-Araz lowland, hot and arid — ideal for cotton cultivation.',
+  },
+  Lenkeran: {
+    label: 'Lenkeran',
+    modelName: 'LENKERAN_0_7_xgb',
+    lat: 38.7543,
+    lon: 48.8506,
+    climate: 'Humid subtropical',
+    cropFocus: 'Tea',
+    // Real data (Apr 29–May 12): temps 12.2–20.4°C, humidity 63–92%
+    temp: { base: 16.5, amplitude: 4.1, noise: 1.5 },
+    moisture: { base: 0.34, amplitude: 0.06, noise: 0.03 },
+    humidity: { base: 80, amplitude: 14, noise: 4 },
+    description: 'Southern Caspian coast, lush and humid — tea farming region.',
+  },
+  Zerdab: {
+    label: 'Zerdab',
+    modelName: 'ZERDAB_0_7_xgb',
+    lat: 40.2184,
+    lon: 47.7121,
+    climate: 'Semi-arid',
+    cropFocus: 'General agriculture',
+    // Real data (Apr 29–May 12): temps 12.2–23.4°C, humidity 39–78%
+    temp: { base: 18, amplitude: 5.6, noise: 2 },
+    moisture: { base: 0.19, amplitude: 0.04, noise: 0.02 },
+    humidity: { base: 64, amplitude: 19, noise: 5 },
+    description: 'Central Aran plain, semi-arid with general agricultural use.',
+  },
+  Quba: {
+    label: 'Quba',
+    modelName: 'QUBA_0_7_xgb',
+    lat: 41.3611,
+    lon: 48.5134,
+    climate: 'Temperate',
+    cropFocus: 'Orchards & Fruit',
+    // Real data (Apr 29–May 12): temps 5.6–16.7°C, humidity 71–98%
+    temp: { base: 11.7, amplitude: 5.5, noise: 2 },
+    moisture: { base: 0.26, amplitude: 0.05, noise: 0.025 },
+    humidity: { base: 82, amplitude: 13, noise: 4 },
+    description: 'Northern mountainous zone, temperate — apple and fruit orchards.',
+  },
+};
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+function seededRandom(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
+function formatDate(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function getDayLabel(date) {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── Forecast Generator ────────────────────────────────────────────
+
+/**
+ * Simulates a call to the XGBoost model for a given city.
+ * Returns a 14-day rolling forecast with realistic, profile-driven values.
+ *
+ * @param {string} cityKey — Key from CITY_PROFILES
+ * @returns {{ forecast: Array, current: Object, modelName: string }}
+ */
+export function simulateModelPrediction(cityKey) {
+  const profile = CITY_PROFILES[cityKey];
+  if (!profile) throw new Error(`Unknown city: ${cityKey}`);
+
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const rng = seededRandom(seed + cityKey.charCodeAt(0) * 1000);
+
+  const forecast = [];
+  let prevMoisture = profile.moisture.base;
+
+  for (let day = 0; day < 14; day++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + day);
+
+    // Sinusoidal seasonal drift + noise
+    const dayFraction = day / 14;
+    const seasonalWave = Math.sin(dayFraction * Math.PI * 2);
+
+    const temperature = clamp(
+      profile.temp.base + profile.temp.amplitude * seasonalWave + (rng() - 0.5) * profile.temp.noise * 2,
+      -5, 50
+    );
+
+    // Moisture is autoregressive — depends on previous day
+    const moistureDrift = (rng() - 0.48) * profile.moisture.noise;
+    const meanReversion = (profile.moisture.base - prevMoisture) * 0.15;
+    const moisture = clamp(
+      prevMoisture + moistureDrift + meanReversion + profile.moisture.amplitude * seasonalWave * 0.1,
+      0.02, 0.55
+    );
+    prevMoisture = moisture;
+
+    const humidity = clamp(
+      profile.humidity.base + profile.humidity.amplitude * seasonalWave + (rng() - 0.5) * profile.humidity.noise * 2,
+      15, 99
+    );
+
+    const precipitation = rng() > 0.7 ? Math.round(rng() * 12 * (profile.humidity.base / 50) * 10) / 10 : 0;
+
+    forecast.push({
+      date: formatDate(date),
+      dateLabel: getDayLabel(date),
+      day: day + 1,
+      temperature: Math.round(temperature * 10) / 10,
+      soilMoisture: Math.round(moisture * 10000) / 10000,
+      soilMoisturePercent: Math.round(moisture * 100 * 10) / 10,
+      humidity: Math.round(humidity * 10) / 10,
+      precipitation,
+    });
+  }
+
+  // "Current" = day 0 values
+  const current = {
+    temperature: forecast[0].temperature,
+    soilMoisture: forecast[0].soilMoisture,
+    soilMoisturePercent: forecast[0].soilMoisturePercent,
+    humidity: forecast[0].humidity,
+    precipitation: forecast[0].precipitation,
+  };
+
+  return {
+    forecast,
+    current,
+    modelName: profile.modelName,
+    profile,
+  };
+}
+
+// ── Soil Health Classification ────────────────────────────────────
+
+/**
+ * Returns soil health status based on moisture percentage.
+ *   Green  — 20-35 % (optimal)
+ *   Yellow — 12-20 % or 35-45 % (warning)
+ *   Red    — < 12 % or > 45 % (critical)
+ */
+export function getSoilHealthStatus(moisturePercent) {
+  if (moisturePercent >= 20 && moisturePercent <= 35) {
+    return { level: 'Optimal', color: 'green', message: 'Soil moisture is within the ideal range for most crops.' };
+  }
+  if (moisturePercent >= 12 && moisturePercent < 20) {
+    return { level: 'Low', color: 'yellow', message: 'Soil is drying out — consider irrigation soon.' };
+  }
+  if (moisturePercent > 35 && moisturePercent <= 45) {
+    return { level: 'High', color: 'yellow', message: 'Soil is overly saturated — monitor drainage.' };
+  }
+  if (moisturePercent < 12) {
+    return { level: 'Critical — Dry', color: 'red', message: 'Severe moisture deficit — immediate irrigation required.' };
+  }
+  return { level: 'Critical — Wet', color: 'red', message: 'Waterlogged soil — risk of root rot and crop damage.' };
+}
+
+export const CITY_KEYS = Object.keys(CITY_PROFILES);
